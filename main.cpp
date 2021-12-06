@@ -2,6 +2,14 @@
 #include "FEHUtility.h"
 #include <string.h>
 #include <iostream>
+#include <fstream>
+
+using namespace std;
+
+
+// Function prototypes
+void getCurrentAndHighScore(int *, int *);
+void writeScoreToFile(int);
 
 /*
  * Button class. Takes in position and content text value. 
@@ -50,19 +58,21 @@ bool Button::touched(float touch_x, float touch_y){
  */
 class Main_Menu{
     public:
-        Main_Menu(Button *pl, Button *ru, Button *qu);
+        Main_Menu(Button *pl, Button *ru,Button *st, Button *qu);
         int touchedButton(float touched_x, float touched_y);
         void draw();
     private:
         Button *playBTN;
         Button *rulesBTN;
         Button *quitBTN;
+        Button *statsBTN;
 };
 
 // constructs the Main Menu class
-Main_Menu::Main_Menu(Button *pl, Button *ru, Button *qu){
+Main_Menu::Main_Menu(Button *pl, Button *ru,Button *st, Button *qu){
     playBTN = pl;
     rulesBTN = ru;
+    statsBTN = st;
     quitBTN = qu;
 }
 
@@ -71,10 +81,11 @@ void Main_Menu::draw(){
     LCD.Clear();
     (*playBTN).draw();
     (*rulesBTN).draw();
+    (*statsBTN).draw();
     (*quitBTN).draw();
 }
 
-// returns the button in Main Menu that was touched. 1 = Play, 2 = Rules, 3 = Quit, and 0 = N/A.
+// returns the button in Main Menu that was touched. 1 = Play, 2 = Rules, 3 = Stats, 4 = Quit, and 0 = N/A.
 int Main_Menu::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*playBTN).touched(touched_x,touched_y)){
@@ -83,13 +94,14 @@ int Main_Menu::touchedButton(float touched_x, float touched_y){
     else if((*rulesBTN).touched(touched_x,touched_y)){
         touched = 2;
     }
-    else if((*quitBTN).touched(touched_x,touched_y)){
+    else if((*statsBTN).touched(touched_x,touched_y)){
         touched = 3;
+    }
+    else if((*quitBTN).touched(touched_x,touched_y)){
+        touched = 4;
     }
     return touched;
 }
-
-
 
 /*
  * Rules class
@@ -137,8 +149,8 @@ class Play{
         void drawFlappy(float x, float old_y, float y);
         void displayScore();
         void retryMenu();
-        // sets the value of "hit"
-        void collided();
+        // sets the value of "hit" given the x value of the pipe
+        void collided(int x, int top_y);
     private:
         Button *backBTN;
         Button *retryBTN;
@@ -192,6 +204,8 @@ void Play::draw(){
         movePipes();
     }
 
+    // writes to a local file the score, if it was higher than previous high score.
+    writeScoreToFile(scoreCounter);
     retryMenu();
 
     // resetting collision to false and counter to 0
@@ -249,7 +263,7 @@ void Play::movePipes(){
         final_y = initial_y - distanceFlappyMoved;
         drawFlappy(160,initial_y, final_y);
         // updating the value of "hit".
-        collided();
+        collided(x, top_y);
 
         initial_v = final_v;
         initial_y = final_y; 
@@ -279,7 +293,7 @@ void Play::movePipes(){
         }
 
         // moves pipes back one
-        x -= 2;
+        x -= 5;
     }
 }
 
@@ -306,12 +320,23 @@ void Play::drawFlappy(float x, float old_y, float y){
     }
 }
 
-// returns true if the flappy bird hit a pipe or the ground. [NOT DONE]
-void Play::collided(){
+// returns true if the flappy bird hit a pipe or the ground. Takes in the value
+// of the pipe's x.
+void Play::collided(int x, int top_y){
     // hiting the floor
     if(final_y >= 212){
         hit = true;
     }
+
+    // hitting the pipe
+
+    // checking if the pipe is inside the locations of the bird
+    if(x >= 138 && x<=168){
+        if(top_y - final_y <= 10 || final_y - (top_y - 56) <= 5){
+            hit = true;
+        } 
+    }
+
 }
 
 // creates retry menu
@@ -343,8 +368,86 @@ void Play::displayScore(){
         LCD.WriteAt(scoreCounter,290,0);
 }
 
+/*
+ * Stats class
+ */
+class Stats{
+    public:
+        Stats(Button *bk);
+        void draw();
+        int touchedButton(float touched_x, float touched_y);
+    private:
+        Button *back;
+        int currentScore;
+        int highScore;
+};
+
+// constructor for Stats class
+Stats::Stats(Button *bk){
+    back = bk;
+}
+
+// touching the back button in Stats returns 1. Else, returns 0.
+int Stats::touchedButton(float touched_x, float touched_y){
+    int touched = 0;
+    if((*back).touched(touched_x,touched_y)){
+        touched = 1;
+    }
+    return touched;
+}
+
+// draws the stats page including buttons, max score, and current score.
+void Stats::draw(){
+    LCD.SetFontColor(WHITE);
+    LCD.Clear();
+    (*back).draw();
+    getCurrentAndHighScore(&currentScore, &highScore);
+    LCD.WriteAt("Max Score:", 100, 0);
+    LCD.WriteAt(highScore,159,59);
+    LCD.WriteAt("Current Score:", 80, 119);
+    LCD.WriteAt(currentScore,159, 178);
+}
+
+// writing the score to the file, if current score is higher than high score
+void writeScoreToFile(int scoreCounter){
+    int highScore;
+    ifstream inputScores;
+    ofstream outputScores;
+
+    // opening the input scores file
+    inputScores.open("scores.txt"); // 3 3
+    
+    // storing the current high score
+    inputScores >> highScore; // 3
+
+    // opening the output file
+    outputScores.open("scores.txt");
+
+    // checking if high score is less than input score
+    if(highScore < scoreCounter){ // 3 < 1
+        outputScores << scoreCounter << endl; 
+    } else {
+        outputScores << highScore << endl;
+    }
+
+    // printing the current score to the file
+    outputScores << scoreCounter << endl; 
+
+    // closing the input and output streams
+    inputScores.close();
+    outputScores.close();
+}
+
+// returns array with current and high score
+void getCurrentAndHighScore(int *currentScore, int *highScore){
+    ifstream inputScores;
+    inputScores.open("scores.txt");
+    inputScores >> *highScore >> *currentScore;
+    inputScores.close();
+}
+
 // Checks if a button was clicked on given "onScreen".
-bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules, Play *play){
+bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules, Play *play, Stats *stats){
     bool touched = false;
 
     // in Main Menu
@@ -363,9 +466,16 @@ bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules
             touched = true;
         }
 
-        // "Quit" button was touched in main menu
+        // "Stats" button was touched in main menu
         else if(buttonTouched == 3){
+            // change to 4
             *onScreen = 4;
+            touched = true;
+        }
+
+        // "Quit" button was touched in main menu
+        else if(buttonTouched == 4){
+            *onScreen = 5;
             touched = true;
         }
     }
@@ -394,11 +504,20 @@ bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules
         }
     }
 
+    // in Stats Screen
+    else if((*onScreen) == 4){
+        // Back button was touched in Stats
+        if((*stats).touchedButton(x,y) == 1){
+            *onScreen = 1;
+            touched = true;
+        }
+    }
+
     return touched;
 }
 
 // The initiater of the given screen. 
-void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play)
+void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play, Stats *stats)
 {
     if(*onScreen == 1){
         // the actions main menu performs
@@ -412,7 +531,11 @@ void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play)
         // the actions rules performs
         (*rules).draw();
     }
-    else {
+    else if(*onScreen == 4){
+        // the actions stats performs
+        (*stats).draw();
+    }
+    else{
         // the actions quit performs
         LCD.Clear();
         LCD.WriteLine("Game Terminated.");
@@ -421,6 +544,17 @@ void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play)
         LCD.WriteLine("Bye");
         Sleep(1.0);
     }
+}
+
+// prints the credits at the beginning of the game 
+void printCredits(){
+    LCD.Clear();
+    LCD.SetFontColor(WHITE);
+    LCD.WriteAt("Created by",0,0);
+    LCD.WriteAt("Kishore Prakash Sailaja", 0, 20);
+    LCD.WriteAt("and", 0, 40);
+    LCD.WriteAt("Arad Peregoudov", 0, 60);
+    Sleep(3.0);
 }
 
 /*
@@ -433,16 +567,22 @@ int main() {
     LCD.Clear();
 
 
+    // display credits
+    //printCredits();
+
+
     Button playBTN("PLAY",90,120,4*12 + 2, 19);
-    Button rulesBTN("RULES",170,120,5*12 + 2, 19);
-    Button quitBTN("QUIT",130,150,4*12 + 2, 19);
+    Button rulesBTN("RULES",180,120,5*12 + 2, 19);
+    Button statsBTN("STATS",90,150,5*12 + 2, 19);
+    Button quitBTN("QUIT",180,150,4*12 + 2, 19);
     Button backBTN("<-",280,0,2*12 + 2, 19);
     Button playBackBTN("<-",100,120,2*12 + 2, 19);
     Button playRetryBTN("RETRY",180,120,5*12 + 2, 19);
 
-    Main_Menu myMenu(&playBTN, &rulesBTN, &quitBTN);
+    Main_Menu myMenu(&playBTN, &rulesBTN, &statsBTN, &quitBTN);
     Rules myRules(&backBTN);
     Play myPlay(&playBackBTN,&playRetryBTN);
+    Stats myStats(&backBTN);
 
     // declear user's click location.
     float x;
@@ -452,19 +592,19 @@ int main() {
     myMenu.draw();
 
     /*
-     * 1 = Main Menu Screen, 2 = Play Screen, 3 = Rules Screen, 4 = Quit Screen
+     * 1 = Main Menu Screen, 2 = Play Screen, 3 = Rules Screen, 4 = Stats Screen, and 5 = Quit Screen
      */
     int onScreen = 1;
 
     // Loop till not on quit screen.
-    while(onScreen != 4){
+    while(onScreen != 5){
 
         // Setting arbitrary values outside of LCD's display to start 
         x = 1000;
         y = 1000;
 
         // waiting to click a button on given screen
-        while(!touchedAnyButton(x,y, &onScreen, &myMenu, &myRules, &myPlay)){
+        while(!touchedAnyButton(x,y, &onScreen, &myMenu, &myRules, &myPlay, &myStats)){
              while(!LCD.Touch(&x,&y)){
             // wait until screen is not being touched
             }
@@ -474,9 +614,11 @@ int main() {
         }
 
         // Screen on "onScreen" will be run
-        initiate(&onScreen, &myMenu, &myRules, &myPlay);
+        initiate(&onScreen, &myMenu, &myRules, &myPlay, &myStats);
     }
 
+    // Updating score file to reset scores to 0
+    writeScoreToFile(0);
 
     // Stuff below is un-needed. Ignore.
     // while (1) {
