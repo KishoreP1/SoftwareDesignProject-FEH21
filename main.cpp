@@ -3,6 +3,7 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include "FEHImages.h"
 
 using namespace std;
 
@@ -39,6 +40,7 @@ Button::Button(char txt[100], float tl_x, float tl_y, int wid, int hei){
 
 // draws the button with content
 void Button::draw(){
+    LCD.SetFontColor(WHITE);
     LCD.DrawRectangle(x, y, width, height);
     LCD.WriteAt(content, x, y+2);
 }
@@ -78,7 +80,12 @@ Main_Menu::Main_Menu(Button *pl, Button *ru,Button *st, Button *qu){
 
 // draws the main menu with given buttons
 void Main_Menu::draw(){
+    FEHIMAGE mainMenubg;
+    mainMenubg.Open("pics/FlappyFEHFEH.pic");
     LCD.Clear();
+    mainMenubg.Draw(0,0);
+    LCD.SetFontColor(WHITE);
+    LCD.WriteAt("FlappyFEH",100, 80);
     (*playBTN).draw();
     (*rulesBTN).draw();
     (*statsBTN).draw();
@@ -155,6 +162,7 @@ class Play{
         Button *backBTN;
         Button *retryBTN;
         int scoreCounter = 0;
+        int ground_x = 0;
         float initial_y, final_y;
         float initial_v, final_v;
         // hit = true means flappy hit a pipe or floor. hit = false means flappy hasn't hit anything
@@ -171,9 +179,16 @@ Play::Play(Button *bk, Button *rtry){
 void Play::draw(){
     LCD.Clear();
 
+    //drawing in LIGHTSKY BLUE backgrounds 
+    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.FillRectangle(0,0,320,220);
+
     // Drawing the ground
-    LCD.SetFontColor(LIGHTGREEN);
-    LCD.FillRectangle(0,220,319,20);
+    FEHIMAGE ground;
+    ground.Open("pics/groundFEH.pic");
+    ground.Draw(220,ground_x);
+    // LCD.SetFontColor(LIGHTGREEN);
+    // LCD.FillRectangle(0,220,320,20);
 
     
     // setting initial y location to middle of screen
@@ -199,6 +214,10 @@ void Play::draw(){
     LCD.SetFontColor(BLACK);
     LCD.FillRectangle(130,0,320,220);
 
+    //drawing in LIGHTSKY BLUE backgrounds 
+    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.FillRectangle(0,0,320,220);
+
     // moving the pipes constantly to the left till flappy hasn't "hit" anything
     while(!hit){
         movePipes();
@@ -220,14 +239,14 @@ void Play::draw(){
 
 // displays the pipes' left end at given x
 void Play::drawPipes(int x, int top_y, int width){
-    LCD.SetFontColor(GREEN);
+    LCD.SetFontColor(DARKGREEN);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 } 
 
 // clears the previously drawn pipes located at x
 void Play::clearPipes(int x, int top_y, int width){
-    LCD.SetFontColor(BLACK);
+    LCD.SetFontColor(LIGHTSKYBLUE);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 }
@@ -250,7 +269,7 @@ void Play::movePipes(){
         if(LCD.Touch(&arb_x, &arb_y)){
             // set the bird going up
             final_v = 4;
-        } else { 
+        } else {  
             // increase velocity of the bird downward
             final_v = initial_v - 0.8;
             // terminal velocity
@@ -270,23 +289,24 @@ void Play::movePipes(){
 
         // removes wrapping of the pipe at x < 0
         if(x < 0){
+            clearPipes(0,top_y, 30 + x+5);
             drawPipes(0, top_y, 30 + x);
             Sleep(3);
-            clearPipes(0,top_y, 30 + x);
         } 
         // removes wrapping of the pipe at x > 290
         else if(x > 290){
+            clearPipes(x+5,top_y, 320 - (x+5));
             drawPipes(x, top_y, 320 - x);
             Sleep(3);
-            clearPipes(x,top_y, 320 - x);
         }
         // displays the pipe when x => 0 and x <= 290
         else {
+            clearPipes(x+5,top_y, 30);
             drawPipes(x, top_y, 30);
             Sleep(3);
-            clearPipes(x,top_y, 30);
         }
 
+        
         // incrementing counter if pipe pass center of screens
         if(x == 130){
             scoreCounter++;
@@ -294,29 +314,35 @@ void Play::movePipes(){
 
         // moves pipes back one
         x -= 5;
+        
+
+        // drawing the new ground 
+        ground_x -=5;
+        FEHIMAGE ground;
+        ground.Open("pics/groundFEH.pic");
+        ground.Draw(220,ground_x);
     }
 }
 
 // clears flappy bird at (x,old_y) and draws a flappy character at (x,y)
 void Play::drawFlappy(float x, float old_y, float y){
+    // opening balaji's picture
+    FEHIMAGE balaji;
+    balaji.Open("pics/balajiheadFEH.pic");
+
+    FEHIMAGE ground;
+    ground.Open("pics/groundFEH.pic");
 
     // Drawing flappy if the flappy is within bounds of LCD display
     if(y > -13){
-        LCD.SetFontColor(BLACK);
-        LCD.FillCircle(x,old_y,8);
-        LCD.SetFontColor(YELLOW);
-        LCD.FillCircle(x,y,8);
+        LCD.SetFontColor(LIGHTSKYBLUE);
+        LCD.FillCircle(x,old_y,24);
+        
+        // drawing the flappy bird 
+        balaji.Draw(y-8,x-8);
 
         // Drawing the ground to prevent marks on ground.
-        LCD.SetFontColor(LIGHTGREEN);
-        LCD.FillRectangle(0,220,319,20);
-
-        // drawing portions flappy at the upper portion of the LCD, if the flappy
-        // is partly visible in the screen.
-        if(y < 8){
-            LCD.SetFontColor(LIGHTGREEN);
-            LCD.FillRectangle(152,y-8,20,abs(y-8));
-        }
+        ground.Draw(220,ground_x);
     }
 }
 
@@ -362,7 +388,7 @@ int Play::touchedButton(float touched_x, float touched_y){
 
 void Play::displayScore(){
         // clearing the previous score and setting new score
-        LCD.SetFontColor(BLACK);
+        LCD.SetFontColor(LIGHTSKYBLUE);
         LCD.FillRectangle(290,0,26,19);
         LCD.SetFontColor(WHITE);
         LCD.WriteAt(scoreCounter,290,0);
@@ -583,6 +609,7 @@ int main() {
     Rules myRules(&backBTN);
     Play myPlay(&playBackBTN,&playRetryBTN);
     Stats myStats(&backBTN);
+
 
     // declear user's click location.
     float x;
