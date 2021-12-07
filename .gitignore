@@ -1,0 +1,5 @@
+simulator_libraries/
+*.o
+*.d
+*.exe
+*.out
