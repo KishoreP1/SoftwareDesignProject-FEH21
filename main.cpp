@@ -10,7 +10,7 @@ using namespace std;
 
 // Function prototypes
 void getCurrentAndHighScore(int *, int *);
-void writeScoreToFile(int);
+void writeScoreToFile(int, int);
 
 /*
  * Button class. Takes in position and content text value. 
@@ -81,7 +81,7 @@ Main_Menu::Main_Menu(Button *pl, Button *ru,Button *st, Button *qu){
 // draws the main menu with given buttons
 void Main_Menu::draw(){
     FEHIMAGE mainMenubg;
-    mainMenubg.Open("pics/FlappyFEHFEH.pic");
+    mainMenubg.Open("pics/FlappyFEH_mainmenu.pic");
     LCD.Clear();
     mainMenubg.Draw(0,0);
     LCD.SetFontColor(WHITE);
@@ -129,8 +129,15 @@ Rules::Rules(Button *bk){
 // Arad: Work on formatting Rules
 void Rules::draw(){
     LCD.Clear();
+    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.FillRectangle(0,0,320,240);
     (*back).draw();
-    LCD.WriteAt("The Rules are:",0,0);
+    LCD.SetFontColor(WHITE);
+    LCD.WriteAt("Help Balaji:", 0, 10);
+    LCD.WriteAt("1. Dodge the obstacles.", 0, 70 );
+    LCD.WriteAt("2. Avoid the ground.", 0, 100);
+    LCD.WriteAt("3. Choose 'Beastmode'",0,130); 
+    LCD.WriteAt("\t\t if you dare!!", 0, 160);
 }
 
 // touching the back button in Rules returns 1. Else, returns 0.
@@ -158,15 +165,23 @@ class Play{
         void retryMenu();
         // sets the value of "hit" given the x value of the pipe
         void collided(int x, int top_y);
+        void setDifficulty();
+        void changeTheme();
     private:
         Button *backBTN;
         Button *retryBTN;
+        FEHIMAGE balaji;
+        FEHIMAGE ground;
         int scoreCounter = 0;
         int ground_x = 0;
         float initial_y, final_y;
         float initial_v, final_v;
         // hit = true means flappy hit a pipe or floor. hit = false means flappy hasn't hit anything
         bool hit = false;
+        // 0 -> normal; 1 -> beast mode
+        int difficulty;
+        int speed;
+        int pipeColor, bgColor;
 };
 
 // constructs the Play class with play and retry buttons
@@ -178,19 +193,20 @@ Play::Play(Button *bk, Button *rtry){
 // NOT COMPLETE
 void Play::draw(){
     LCD.Clear();
+    
+    // setting the difficulty
+    setDifficulty();
+
+    // choosing the theme according to the difficulty
+    changeTheme(); 
 
     //drawing in LIGHTSKY BLUE backgrounds 
-    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.SetFontColor(bgColor);
     LCD.FillRectangle(0,0,320,220);
 
     // Drawing the ground
-    FEHIMAGE ground;
-    ground.Open("pics/groundFEH.pic");
     ground.Draw(220,ground_x);
-    // LCD.SetFontColor(LIGHTGREEN);
-    // LCD.FillRectangle(0,220,320,20);
 
-    
     // setting initial y location to middle of screen
     initial_y = 110;
     // setting initial y velocity and final velocity to 0
@@ -211,11 +227,8 @@ void Play::draw(){
         // wait until person lets go
     }
 
-    LCD.SetFontColor(BLACK);
-    LCD.FillRectangle(130,0,320,220);
-
     //drawing in LIGHTSKY BLUE backgrounds 
-    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.SetFontColor(bgColor);
     LCD.FillRectangle(0,0,320,220);
 
     // moving the pipes constantly to the left till flappy hasn't "hit" anything
@@ -223,8 +236,8 @@ void Play::draw(){
         movePipes();
     }
 
-    // writes to a local file the score, if it was higher than previous high score.
-    writeScoreToFile(scoreCounter);
+    // writes to a local file the score, if it was higher than previous high score. 
+    writeScoreToFile(scoreCounter, difficulty);
     retryMenu();
 
     // resetting collision to false and counter to 0
@@ -239,14 +252,14 @@ void Play::draw(){
 
 // displays the pipes' left end at given x
 void Play::drawPipes(int x, int top_y, int width){
-    LCD.SetFontColor(DARKGREEN);
+    LCD.SetFontColor(pipeColor);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 } 
 
 // clears the previously drawn pipes located at x
 void Play::clearPipes(int x, int top_y, int width){
-    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.SetFontColor(bgColor);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 }
@@ -289,19 +302,19 @@ void Play::movePipes(){
 
         // removes wrapping of the pipe at x < 0
         if(x < 0){
-            clearPipes(0,top_y, 30 + x+5);
+            clearPipes(0,top_y, 30 + x+speed);
             drawPipes(0, top_y, 30 + x);
             Sleep(3);
         } 
         // removes wrapping of the pipe at x > 290
         else if(x > 290){
-            clearPipes(x+5,top_y, 320 - (x+5));
+            clearPipes(x+5,top_y, 320 - (x+speed));
             drawPipes(x, top_y, 320 - x);
             Sleep(3);
         }
         // displays the pipe when x => 0 and x <= 290
         else {
-            clearPipes(x+5,top_y, 30);
+            clearPipes(x+speed,top_y, 30);
             drawPipes(x, top_y, 30);
             Sleep(3);
         }
@@ -313,29 +326,20 @@ void Play::movePipes(){
         }
 
         // moves pipes back one
-        x -= 5;
+        x -= speed;
         
 
-        // drawing the new ground 
-        ground_x -=5;
-        FEHIMAGE ground;
-        ground.Open("pics/groundFEH.pic");
+        // moving the ground 
+        ground_x -= speed;
         ground.Draw(220,ground_x);
     }
 }
 
 // clears flappy bird at (x,old_y) and draws a flappy character at (x,y)
 void Play::drawFlappy(float x, float old_y, float y){
-    // opening balaji's picture
-    FEHIMAGE balaji;
-    balaji.Open("pics/balajiheadFEH.pic");
-
-    FEHIMAGE ground;
-    ground.Open("pics/groundFEH.pic");
-
     // Drawing flappy if the flappy is within bounds of LCD display
     if(y > -13){
-        LCD.SetFontColor(LIGHTSKYBLUE);
+        LCD.SetFontColor(bgColor);
         LCD.FillCircle(x,old_y,24);
         
         // drawing the flappy bird 
@@ -353,32 +357,35 @@ void Play::collided(int x, int top_y){
     if(final_y >= 212){
         hit = true;
     }
-
-    // hitting the pipe
-
     // checking if the pipe is inside the locations of the bird
     if(x >= 138 && x<=168){
         if(top_y - final_y <= 10 || final_y - (top_y - 56) <= 5){
             hit = true;
         } 
     }
-
 }
 
 // creates retry menu
 void Play::retryMenu(){
+    FEHIMAGE retryBG;
+    retryBG.Open("pics/retryBG.pic");
+    retryBG.Draw(35,120);
+    // LCD.SetFontColor(ORANGE);
+    // LCD.FillRectangle(120,35,130,110);
     LCD.SetFontColor(WHITE);
-    LCD.WriteAt("Score:",120,45);
-    LCD.WriteAt(scoreCounter,144,80);
+    LCD.WriteAt("Score:",120+20,45);
+    LCD.WriteAt(scoreCounter,144+20,80);
     (*backBTN).draw();
     (*retryBTN).draw();
 }
 
 // touching the back button in Play returns 1. Touching the retry button in Play returns 2. Else, returns 0.
+// the method also resets the difficulty to N/A, if the user goes back to the main menu.
 int Play::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*backBTN).touched(touched_x,touched_y)){
         touched = 1;
+        difficulty = 0;
     } else if((*retryBTN).touched(touched_x, touched_y)){
         touched = 2;
     }
@@ -388,10 +395,74 @@ int Play::touchedButton(float touched_x, float touched_y){
 
 void Play::displayScore(){
         // clearing the previous score and setting new score
-        LCD.SetFontColor(LIGHTSKYBLUE);
+        LCD.SetFontColor(bgColor);
         LCD.FillRectangle(290,0,26,19);
         LCD.SetFontColor(WHITE);
         LCD.WriteAt(scoreCounter,290,0);
+}
+
+// asks the user for the type of difficulty and changes the theme
+void Play::setDifficulty(){
+    // only setting the difficulty if it hasn't yet been set. 
+    if(difficulty == 0){
+        //Drawing the two options
+        LCD.Clear();
+        FEHIMAGE normalBalaji;
+        normalBalaji.Open("pics/balajihead_50by50.pic");
+        normalBalaji.Draw(75,55);
+        // LCD.FillCircle(80,100,25);
+        LCD.WriteAt("normal",45,140);
+
+        FEHIMAGE beastmodeBalaji;
+        beastmodeBalaji.Open("pics/beastmodebalajihead_50by50.pic");
+        beastmodeBalaji.Draw(80, 225);
+        // LCD.FillCircle(250,100,25);
+
+        LCD.SetFontColor(WHITE);
+        LCD.WriteAt("normal",45,140);
+        LCD.WriteAt("beastmode", 200, 140);
+        //Sleep(15.0);
+
+        int x, y;
+        // getting the user input 
+        do{
+            while(!LCD.Touch(&x,&y)){
+                // wait until screen is not being touched
+            }
+            while(LCD.Touch(&x,&y)){
+                // wait until person lets go
+            }
+        } while( ((x-80)*(x-80) + (y-100)*(y-100) > 25 * 25) &&
+                ((x-250)*(x-250) + (y-100)*(y-100) > 25*25));
+
+
+        // setting difficulty. 1 = Normal Mode; 2 = Beast Mode!
+        if (((x-80)*(x-80) + (y-100)*(y-100) <= 25 * 25)) {
+            difficulty = 1;
+        } else {
+            difficulty = 2;
+        }
+    }
+}
+
+// changes theme and speed of game according to normal or beast mode difficulty.
+void Play::changeTheme(){
+    // if normal mode, set image files to normal files and set colors
+    if(difficulty == 1){
+        balaji.Open("pics/balajihead_16by16.pic");
+        ground.Open("pics/ground.pic");
+        bgColor = LIGHTSKYBLUE;
+        pipeColor = DARKGREEN;
+        speed = 5;
+    } 
+    // else open beast mode image files and set colors
+    else {
+        balaji.Open("pics/beastmodebalajihead_16by16.pic");
+        ground.Open("pics/ground.pic");
+        bgColor = BLACK;
+        pipeColor = RED;
+        speed = 10;
+    }
 }
 
 /*
@@ -424,40 +495,55 @@ int Stats::touchedButton(float touched_x, float touched_y){
 
 // draws the stats page including buttons, max score, and current score.
 void Stats::draw(){
-    LCD.SetFontColor(WHITE);
     LCD.Clear();
+    LCD.SetFontColor(LIGHTSKYBLUE);
+    LCD.FillRectangle(0,0,320,240);
+    LCD.SetFontColor(WHITE);
     (*back).draw();
     getCurrentAndHighScore(&currentScore, &highScore);
-    LCD.WriteAt("Max Score:", 100, 0);
+    LCD.WriteAt("BEASTMODE max Score:", 25, 10);
     LCD.WriteAt(highScore,159,59);
-    LCD.WriteAt("Current Score:", 80, 119);
+    LCD.WriteAt("Normal max score:", 50, 119);
     LCD.WriteAt(currentScore,159, 178);
 }
 
 // writing the score to the file, if current score is higher than high score
-void writeScoreToFile(int scoreCounter){
-    int highScore;
+void writeScoreToFile(int scoreCounter, int difficulty){
+    int highBeastScore;
+    int highNormalScore;
+
     ifstream inputScores;
     ofstream outputScores;
 
     // opening the input scores file
-    inputScores.open("scores.txt"); // 3 3
+    inputScores.open("scores.txt"); 
     
-    // storing the current high score
-    inputScores >> highScore; // 3
+    // storing the current beast high score
+    inputScores >> highBeastScore; 
+    inputScores >> highNormalScore;
 
     // opening the output file
     outputScores.open("scores.txt");
 
-    // checking if high score is less than input score
-    if(highScore < scoreCounter){ // 3 < 1
-        outputScores << scoreCounter << endl; 
-    } else {
-        outputScores << highScore << endl;
+    // updating the beastmode high score
+    if(difficulty == 2){
+        if(highBeastScore < scoreCounter){
+            outputScores << scoreCounter << endl; 
+        } else {
+            outputScores << highBeastScore << endl;
+        }
+        outputScores << highNormalScore << endl;
     }
-
-    // printing the current score to the file
-    outputScores << scoreCounter << endl; 
+    
+    // updating the normalmode high score
+    if(difficulty == 1){
+        outputScores << highBeastScore << endl;
+        if(highNormalScore < scoreCounter){
+            outputScores << scoreCounter << endl;
+        } else {
+            outputScores << highNormalScore << endl;
+        }
+    }
 
     // closing the input and output streams
     inputScores.close();
@@ -601,8 +687,8 @@ int main() {
     Button rulesBTN("RULES",180,120,5*12 + 2, 19);
     Button statsBTN("STATS",90,150,5*12 + 2, 19);
     Button quitBTN("QUIT",180,150,4*12 + 2, 19);
-    Button backBTN("<-",280,0,2*12 + 2, 19);
-    Button playBackBTN("<-",100,120,2*12 + 2, 19);
+    Button backBTN("<-",280,7,2*12 + 2, 19);
+    Button playBackBTN("<-",100+30,120,2*12 + 2, 19);
     Button playRetryBTN("RETRY",180,120,5*12 + 2, 19);
 
     Main_Menu myMenu(&playBTN, &rulesBTN, &statsBTN, &quitBTN);
@@ -643,15 +729,6 @@ int main() {
         // Screen on "onScreen" will be run
         initiate(&onScreen, &myMenu, &myRules, &myPlay, &myStats);
     }
-
-    // Updating score file to reset scores to 0
-    writeScoreToFile(0);
-
-    // Stuff below is un-needed. Ignore.
-    // while (1) {
-    //     LCD.Update();
-    //     // Never end
-    // }
 
     return 0;
 }
