@@ -519,8 +519,7 @@ void writeScoreToFile(int scoreCounter, int difficulty){
     inputScores.open("scores.txt"); 
     
     // storing the current beast high score
-    inputScores >> highBeastScore; 
-    inputScores >> highNormalScore;
+    inputScores >> highBeastScore >> highNormalScore;
 
     // opening the output file
     outputScores.open("scores.txt");
