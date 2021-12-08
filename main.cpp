@@ -7,10 +7,10 @@
 
 using namespace std;
 
-
 // Function prototypes
-void getCurrentAndHighScore(int *, int *);
+void getHighScores(int *, int *);
 void writeScoreToFile(int, int);
+void printCredits();
 
 /*
  * Button class. Takes in position and content text value. 
@@ -28,7 +28,15 @@ class Button{
         int height;
 };
 
-// constructs Button
+/**
+ * @brief constructs the Button class
+ * 
+ * @param txt text content
+ * @param tl_x top left x of Button
+ * @param tl_y top left y of Button
+ * @param wid width of button
+ * @param hei height of button
+ */
 Button::Button(char txt[100], float tl_x, float tl_y, int wid, int hei){
     strcpy(content,txt);
     x = tl_x;
@@ -38,14 +46,22 @@ Button::Button(char txt[100], float tl_x, float tl_y, int wid, int hei){
 }
 
 
-// draws the button with content
+/**
+ * @brief draws the button from given parameters in constructor
+ */
 void Button::draw(){
     LCD.SetFontColor(WHITE);
     LCD.DrawRectangle(x, y, width, height);
     LCD.WriteAt(content, x, y+2);
 }
 
-// Returns true if the given coordiantes are inside the Button. Else, returns false.
+/**
+ * @brief Checks if the user input touch is touching the button
+ * 
+ * @param touch_x user touch's x position
+ * @param touch_y user touch's y position
+ * @return true if the given coordiantes are inside the Button. Else, returns false.
+ */
 bool Button::touched(float touch_x, float touch_y){
     bool inside = false;
     if( (touch_x >= x && touch_x <= x + width) && (touch_y <= y + height && touch_y >= y)){
@@ -55,8 +71,9 @@ bool Button::touched(float touch_x, float touch_y){
 }
 
 
-/*
- * Main Menu class. Takes in position and content text value. 
+/**
+ * @brief Main Menu class. Takes in position and content text value. 
+ * The class also stores all the buttons included in its screen.
  */
 class Main_Menu{
     public:
@@ -70,7 +87,14 @@ class Main_Menu{
         Button *statsBTN;
 };
 
-// constructs the Main Menu class
+/**
+ * @brief Construct a new Main_Menu Object
+ * 
+ * @param pl Play Button
+ * @param ru Rules Button
+ * @param st Stats Button
+ * @param qu Quit Button
+ */
 Main_Menu::Main_Menu(Button *pl, Button *ru,Button *st, Button *qu){
     playBTN = pl;
     rulesBTN = ru;
@@ -78,7 +102,9 @@ Main_Menu::Main_Menu(Button *pl, Button *ru,Button *st, Button *qu){
     quitBTN = qu;
 }
 
-// draws the main menu with given buttons
+/**
+ * @brief Draws the Main Menu screen with images and buttons
+ */
 void Main_Menu::draw(){
     FEHIMAGE mainMenubg;
     mainMenubg.Open("pics/FlappyFEH_mainmenu.pic");
@@ -92,7 +118,13 @@ void Main_Menu::draw(){
     (*quitBTN).draw();
 }
 
-// returns the button in Main Menu that was touched. 1 = Play, 2 = Rules, 3 = Stats, 4 = Quit, and 0 = N/A.
+/**
+ * @brief Checks whether a button was pressed in Main Menu. And, returns the button that was pressed.
+ * 
+ * @param touched_x user's x touch location
+ * @param touched_y user's y touch location
+ * @return 1 to indicate the Play button was touched, 2 for Rules, 3 for Stats. 4 for Quit, and 0 for None.
+ */
 int Main_Menu::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*playBTN).touched(touched_x,touched_y)){
@@ -110,8 +142,9 @@ int Main_Menu::touchedButton(float touched_x, float touched_y){
     return touched;
 }
 
-/*
- * Rules class
+/**
+ * @brief Rules class. Takes in the stored button.
+ * 
  */
 class Rules{
     public:
@@ -122,11 +155,19 @@ class Rules{
         Button *back;
 };
 
+/**
+ * @brief Construct a new Rules object
+ * 
+ * @param bk the back button inside the rules page
+ */
 Rules::Rules(Button *bk){
     back = bk;
 }
 
-// Arad: Work on formatting Rules
+/**
+ * @brief draws the back button in rules. And, writes the rules in the rules screen.
+ * 
+ */
 void Rules::draw(){
     LCD.Clear();
     LCD.SetFontColor(LIGHTSKYBLUE);
@@ -140,7 +181,13 @@ void Rules::draw(){
     LCD.WriteAt("\t\t if you dare!!", 0, 160);
 }
 
-// touching the back button in Rules returns 1. Else, returns 0.
+/**
+ * @brief Checks whether a button was pressed in Rules. And, returns the button that was pressed.
+ * 
+ * @param touched_x user's x touch location
+ * @param touched_y user's y touch location
+ * @return returns 1 if the back button was pressed in Rules. Else, returns 0.
+ */
 int Rules::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*back).touched(touched_x,touched_y)){
@@ -149,8 +196,9 @@ int Rules::touchedButton(float touched_x, float touched_y){
     return touched;
 }
 
-/*
- * Play class
+/**
+ * @brief Play class. Takes in images, buttons, and tacker variables.
+ * 
  */
 class Play{
     public:
@@ -159,11 +207,10 @@ class Play{
         int touchedButton(float touched_x, float touched_y);
         void drawPipes(int x, int top_y, int width);
         void clearPipes(int x, int top_y, int width);
-        void movePipes();
+        void moveObjects();
         void drawFlappy(float x, float old_y, float y);
         void displayScore();
         void retryMenu();
-        // sets the value of "hit" given the x value of the pipe
         void collided(int x, int top_y);
         void setDifficulty();
         void changeTheme();
@@ -176,21 +223,29 @@ class Play{
         int ground_x = 0;
         float initial_y, final_y;
         float initial_v, final_v;
-        // hit = true means flappy hit a pipe or floor. hit = false means flappy hasn't hit anything
         bool hit = false;
-        // 0 -> normal; 1 -> beast mode
         int difficulty;
         int speed;
         int pipeColor, bgColor;
 };
 
-// constructs the Play class with play and retry buttons
+/**
+ * @brief Construct a new Play object with the back and retry button.
+ * 
+ * @param bk the back button in Play screen
+ * @param rtry the retry button in the play screen
+ */
 Play::Play(Button *bk, Button *rtry){
     backBTN = bk;
     retryBTN = rtry;
 }
 
-// NOT COMPLETE
+/**
+ * @brief Method bascially runs the game. 
+ * Sets the difficulty, changes the theme according to the difficulty, and draws the game's screen.
+ * Actively updates the pipe's and bird's movement. And, keeps track of score in a local file.
+ * 
+ */
 void Play::draw(){
     LCD.Clear();
     
@@ -200,7 +255,7 @@ void Play::draw(){
     // choosing the theme according to the difficulty
     changeTheme(); 
 
-    //drawing in LIGHTSKY BLUE backgrounds 
+    //drawing in LIGHTSKYBLUE background
     LCD.SetFontColor(bgColor);
     LCD.FillRectangle(0,0,320,220);
 
@@ -216,6 +271,7 @@ void Play::draw(){
     // drawing flappy at initial y.
     drawFlappy(130,initial_y,initial_y);
 
+    // prompting the user to click to begin the game
     LCD.SetFontColor(WHITE);
     LCD.WriteAt("click to start", 120, 150);
     int arb_x, arb_y;
@@ -233,7 +289,7 @@ void Play::draw(){
 
     // moving the pipes constantly to the left till flappy hasn't "hit" anything
     while(!hit){
-        movePipes();
+        moveObjects();
     }
 
     // writes to a local file the score, if it was higher than previous high score. 
@@ -250,22 +306,37 @@ void Play::draw(){
 
 
 
-// displays the pipes' left end at given x
+/**
+ * @brief displays the pipes' left end at given x
+ * 
+ * @param x the left-end x position of the pipe
+ * @param top_y the top left corner y position of the bottom pipe
+ * @param width the width of the pipe 
+ */
 void Play::drawPipes(int x, int top_y, int width){
     LCD.SetFontColor(pipeColor);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 } 
 
-// clears the previously drawn pipes located at x
+/**
+ * @brief clears the previously drawn pipes located at x
+ * 
+ * @param x the left-end x position of the pipe
+ * @param top_y the top left corener y position of the bottom pipe
+ * @param width the width of the pipe
+ */
 void Play::clearPipes(int x, int top_y, int width){
     LCD.SetFontColor(bgColor);
     LCD.FillRectangle(x,top_y,width,220-top_y);
     LCD.FillRectangle(x,0,width,top_y-66);
 }
 
-// moves the given pipe from x = 320 to x = -40, while avoiding wrapping. Also increments the score counter
-void Play::movePipes(){
+/**
+ * @brief moves the given pipe's left end from x = 320 to x = -40, while avoiding wrapping. 
+ * Moves the flappy brid according the velocity and user's input to jump.
+ */
+void Play::moveObjects(){
     int x = 320;
     int top_y = rand() % (210 + 1 - 76) + 76;
 
@@ -335,7 +406,13 @@ void Play::movePipes(){
     }
 }
 
-// clears flappy bird at (x,old_y) and draws a flappy character at (x,y)
+/**
+ * @brief clears balaji at (x,old_y) and draws a balaji at (x,y)
+ * 
+ * @param x x position of balaji
+ * @param old_y old y position of previous balaji
+ * @param y new y position of balaji
+ */
 void Play::drawFlappy(float x, float old_y, float y){
     // Drawing flappy if the flappy is within bounds of LCD display
     if(y > -13){
@@ -350,8 +427,12 @@ void Play::drawFlappy(float x, float old_y, float y){
     }
 }
 
-// returns true if the flappy bird hit a pipe or the ground. Takes in the value
-// of the pipe's x.
+/**
+ * @brief sets "hit" to true if balaji hit a pipe or the ground. Else, sets "hit" to false
+ * 
+ * @param x pipe's left end x
+ * @param top_y top left corner of bottom pipe's y position 
+ */
 void Play::collided(int x, int top_y){
     // hiting the floor
     if(final_y >= 212){
@@ -365,7 +446,10 @@ void Play::collided(int x, int top_y){
     }
 }
 
-// creates retry menu
+/**
+ * @brief creates retry menu
+ * 
+ */
 void Play::retryMenu(){
     FEHIMAGE retryBG;
     retryBG.Open("pics/retryBG.pic");
@@ -379,8 +463,15 @@ void Play::retryMenu(){
     (*retryBTN).draw();
 }
 
-// touching the back button in Play returns 1. Touching the retry button in Play returns 2. Else, returns 0.
-// the method also resets the difficulty to N/A, if the user goes back to the main menu.
+/**
+ * @brief touching the back button in Play screen returns 1. 
+ * Touching the retry button in Play returns 2. Else, returns 0. 
+ * The method also resets the difficulty to N/A, if the user goes back to the main menu.
+ * 
+ * @param touched_x 
+ * @param touched_y 
+ * @return 1 for touching back button in Play screen, 2 for retry button, and 0 for touching elsewhere in the screen.
+ */
 int Play::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*backBTN).touched(touched_x,touched_y)){
@@ -392,7 +483,10 @@ int Play::touchedButton(float touched_x, float touched_y){
     return touched;
 }
 
-
+/**
+ * @brief Displays the score of the user the screen.
+ * 
+ */
 void Play::displayScore(){
         // clearing the previous score and setting new score
         LCD.SetFontColor(bgColor);
@@ -401,7 +495,11 @@ void Play::displayScore(){
         LCD.WriteAt(scoreCounter,290,0);
 }
 
-// asks the user for the type of difficulty and changes the theme
+/**
+ * @brief Asks the user for the type of difficulty and changes the theme. 
+ * Only updates the "difficulty" if the current difficulty is "0". "0" indicates no difficulty has been set before.
+ * Sets "difficulty" to 1 for Normal Mode and 2 for Beast Mode.
+ */
 void Play::setDifficulty(){
     // only setting the difficulty if it hasn't yet been set. 
     if(difficulty == 0){
@@ -445,7 +543,10 @@ void Play::setDifficulty(){
     }
 }
 
-// changes theme and speed of game according to normal or beast mode difficulty.
+/**
+ * @brief changes theme and speed of game according to normal or beast mode difficulty.
+ * 
+ */
 void Play::changeTheme(){
     // if normal mode, set image files to normal files and set colors
     if(difficulty == 1){
@@ -465,8 +566,9 @@ void Play::changeTheme(){
     }
 }
 
-/*
- * Stats class
+/**
+ * @brief takes in a Back button and stores the maximum normal and beast scores.
+ * 
  */
 class Stats{
     public:
@@ -475,16 +577,26 @@ class Stats{
         int touchedButton(float touched_x, float touched_y);
     private:
         Button *back;
-        int currentScore;
-        int highScore;
+        int normalScore;
+        int beastScore;
 };
 
-// constructor for Stats class
+/**
+ * @brief Construct a new Stats object
+ * 
+ * @param bk back button
+ */
 Stats::Stats(Button *bk){
     back = bk;
 }
 
-// touching the back button in Stats returns 1. Else, returns 0.
+/**
+ * @brief Checks if a button was pressed in the Stats page. And, returns that button
+ * 
+ * @param touched_x 
+ * @param touched_y 
+ * @return touching the back button in Stats returns 1. Else, returns 0.
+ */
 int Stats::touchedButton(float touched_x, float touched_y){
     int touched = 0;
     if((*back).touched(touched_x,touched_y)){
@@ -493,21 +605,29 @@ int Stats::touchedButton(float touched_x, float touched_y){
     return touched;
 }
 
-// draws the stats page including buttons, max score, and current score.
+/**
+ * @brief draws the stats page including buttons, max score, and current score.
+ * 
+ */
 void Stats::draw(){
     LCD.Clear();
     LCD.SetFontColor(LIGHTSKYBLUE);
     LCD.FillRectangle(0,0,320,240);
     LCD.SetFontColor(WHITE);
     (*back).draw();
-    getCurrentAndHighScore(&currentScore, &highScore);
+    getHighScores(&normalScore, &beastScore);
     LCD.WriteAt("BEASTMODE max Score:", 25, 10);
-    LCD.WriteAt(highScore,159,59);
+    LCD.WriteAt(beastScore,159,59);
     LCD.WriteAt("Normal max score:", 50, 119);
-    LCD.WriteAt(currentScore,159, 178);
+    LCD.WriteAt(normalScore,159, 178);
 }
 
-// writing the score to the file, if current score is higher than high score
+/**
+ * @brief  writing the score to the file, if current score is higher than high score
+ * 
+ * @param scoreCounter user's score
+ * @param difficulty the difficulty the user obtained the score in
+ */
 void writeScoreToFile(int scoreCounter, int difficulty){
     int highBeastScore;
     int highNormalScore;
@@ -549,15 +669,31 @@ void writeScoreToFile(int scoreCounter, int difficulty){
     outputScores.close();
 }
 
-// returns array with current and high score
-void getCurrentAndHighScore(int *currentScore, int *highScore){
+/**
+ * @brief stores the maximum normal and beast scores
+ * 
+ * @param normalScore maximum normal mode score
+ * @param beastScore maximum beast mode score
+ */
+void getHighScores(int *normalScore, int *beastScore){
     ifstream inputScores;
     inputScores.open("scores.txt");
-    inputScores >> *highScore >> *currentScore;
+    inputScores >> *beastScore >> *normalScore;
     inputScores.close();
 }
 
-// Checks if a button was clicked on given "onScreen".
+/**
+ * @brief Checks if a button was pressed on given "onScreen"
+ * 
+ * @param x the x position of user's touch
+ * @param y the y position of user's touch
+ * @param onScreen the screen the user is on. 1 = Main Menu; 2 = Play; 3 = Rules, 4 = Stats.
+ * @param menu the Main_Menu object
+ * @param rules the Rules object
+ * @param play the Play object
+ * @param stats the Stats object
+ * @return true if a button was touched on given "onScreen". False if no button was touched on given "onScreen"
+ */
 bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules, Play *play, Stats *stats){
     bool touched = false;
 
@@ -627,7 +763,15 @@ bool touchedAnyButton(int x, int y, int *onScreen, Main_Menu *menu, Rules *rules
     return touched;
 }
 
-// The initiater of the given screen. 
+/**
+ * @brief Initiator of given "onScreen". In other words, draws the given "onScreen"
+ * 
+ * @param onScreen the screen the user will be on. 1 = Main Menu; 2 = Play; 3 = Rules, 4 = Stats.
+ * @param menu the Main_Menu object
+ * @param rules the Rules object
+ * @param play the Play object
+ * @param stats the Stats object
+ */
 void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play, Stats *stats)
 {
     if(*onScreen == 1){
@@ -657,7 +801,10 @@ void initiate(int *onScreen, Main_Menu *menu, Rules *rules, Play *play, Stats *s
     }
 }
 
-// prints the credits at the beginning of the game 
+/**
+ * @brief prints the credits at the beginning of the game 
+ * 
+ */
 void printCredits(){
     LCD.Clear();
     LCD.SetFontColor(WHITE);
@@ -679,9 +826,9 @@ int main() {
 
 
     // display credits
-    //printCredits();
+    printCredits();
 
-
+    // constructs the buttons 
     Button playBTN("PLAY",90,120,4*12 + 2, 19);
     Button rulesBTN("RULES",180,120,5*12 + 2, 19);
     Button statsBTN("STATS",90,150,5*12 + 2, 19);
@@ -690,6 +837,7 @@ int main() {
     Button playBackBTN("<-",100+30,120,2*12 + 2, 19);
     Button playRetryBTN("RETRY",180,120,5*12 + 2, 19);
 
+    // constructs the screens
     Main_Menu myMenu(&playBTN, &rulesBTN, &statsBTN, &quitBTN);
     Rules myRules(&backBTN);
     Play myPlay(&playBackBTN,&playRetryBTN);
